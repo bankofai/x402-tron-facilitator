@@ -15,10 +15,10 @@ onepassword:
   vault: ""
   privatekey_item: ""
   privatekey_field: ""
-  database_item: ""
-  database_field: ""
-  trongrid_item: ""
-  trongrid_field: ""
+  database_password_item: ""
+  database_password_field: ""
+  trongrid_api_key_item: ""
+  trongrid_api_key_field: ""
 
 server:
   host: "0.0.0.0"
