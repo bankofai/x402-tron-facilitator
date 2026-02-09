@@ -23,8 +23,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY src/ ./src/
-# Use example config (mount your facilitator.config.yaml at runtime to override)
-COPY facilitator.config.example.yaml ./facilitator.config.yaml
 
 # Create logs directory (config may write here)
 RUN mkdir -p logs && chmod 755 logs
