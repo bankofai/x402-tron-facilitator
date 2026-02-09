@@ -103,6 +103,28 @@ async def get_all_api_keys() -> list[str]:
         return [row[0] for row in result.all()]
 
 
+async def insert_payment_record_pending(session: AsyncSession, payment_id: str) -> PaymentRecord:
+    """
+    Insert a payment record with status 'pending' in the current transaction.
+    Does not commit; caller must commit after settle succeeds or rollback on failure.
+
+    Args:
+        session: Active AsyncSession (transaction in progress)
+        payment_id: Unique payment identifier
+
+    Returns:
+        The added PaymentRecord (tx_hash='', status='pending')
+    """
+    record = PaymentRecord(
+        payment_id=payment_id,
+        tx_hash="",
+        status="pending",
+    )
+    session.add(record)
+    await session.flush()
+    return record
+
+
 async def save_payment_record(
     payment_id: str,
     tx_hash: str,
