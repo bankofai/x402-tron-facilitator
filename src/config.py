@@ -24,28 +24,34 @@ class Config:
         Load configuration from YAML file.
         
         Args:
-            config_path: Path to config file. If None, looks for facilitator.config.yaml
-                        in project root or uses CONFIG_PATH env var.
+            config_path: Path to config file. If None:
+              1) uses CONFIG_PATH env var if set
+              2) else tries <project_root>/config/facilitator.config.yaml
+              3) else falls back to <project_root>/facilitator.config.yaml
         
         Raises:
             FileNotFoundError: If configuration file is not found.
         """
         if self._loaded and config_path is None:
-            return  # Prevents redundant loading if уже loaded with default path
+            return  # Prevents redundant loading if already loaded with default path
             
         if config_path is None:
             config_path = os.getenv("CONFIG_PATH")
         
+        project_root = Path(__file__).parent.parent
         if config_path is None:
-            # Look for facilitator.config.yaml in project root
-            project_root = Path(__file__).parent.parent
-            config_path = str(project_root / "facilitator.config.yaml")
+            # Prefer config/facilitator.config.yaml if present, else project root
+            config_dir_candidate = project_root / "config" / "facilitator.config.yaml"
+            if config_dir_candidate.exists():
+                config_path = str(config_dir_candidate)
+            else:
+                config_path = str(project_root / "facilitator.config.yaml")
         
         if not os.path.exists(config_path):
              raise FileNotFoundError(
                  f"Configuration file not found at {config_path}. "
                  "Please ensure facilitator.config.yaml exists in the project root "
-                 "or set CONFIG_PATH environment variable."
+                 "or config/ directory, or set CONFIG_PATH environment variable."
              )
         
         with open(config_path, "r") as f:
