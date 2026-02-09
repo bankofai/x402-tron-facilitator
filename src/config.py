@@ -114,14 +114,14 @@ class Config:
         return int(self._config.get("database", {}).get("max_life_time", 600))
 
     @property
-    def onepassword_database_item(self) -> str:
+    def onepassword_database_password_item(self) -> str:
         """Get 1Password item name for database password"""
-        return self._config.get("onepassword", {}).get("database_item", "")
+        return self._config.get("onepassword", {}).get("database_password_item", "")
 
     @property
-    def onepassword_database_field(self) -> str:
+    def onepassword_database_password_field(self) -> str:
         """Get 1Password field name for database password"""
-        return self._config.get("onepassword", {}).get("database_field", "password")
+        return self._config.get("onepassword", {}).get("database_password_field", "password")
     
     @property
     def onepassword_vault(self) -> str:
@@ -139,14 +139,14 @@ class Config:
         return self._config.get("onepassword", {}).get("privatekey_field", "private_key")
 
     @property
-    def onepassword_trongrid_item(self) -> str:
+    def onepassword_trongrid_api_key_item(self) -> str:
         """Get 1Password item name for TronGrid API Key"""
-        return self._config.get("onepassword", {}).get("trongrid_item", "")
+        return self._config.get("onepassword", {}).get("trongrid_api_key_item", "")
 
     @property
-    def onepassword_trongrid_field(self) -> str:
+    def onepassword_trongrid_api_key_field(self) -> str:
         """Get 1Password field name for TronGrid API Key"""
-        return self._config.get("onepassword", {}).get("trongrid_field", "password")
+        return self._config.get("onepassword", {}).get("trongrid_api_key_field", "api_key")
         
     @property
     def onepassword_token(self) -> Optional[str]:
@@ -299,7 +299,7 @@ class Config:
             return self._trongrid_api_key
 
         # 3. Try 1Password if configured
-        item = self.onepassword_trongrid_item
+        item = self.onepassword_trongrid_api_key_item
         token = self.onepassword_token
         
         if item and token and token != "your-op-token" and token != "your-service-account-token":
@@ -308,7 +308,7 @@ class Config:
                 self._trongrid_api_key = await get_secret_from_1password(
                     vault=self.onepassword_vault,
                     item=item,
-                    field=self.onepassword_trongrid_field,
+                    field=self.onepassword_trongrid_api_key_field,
                     token=token,
                 )
                 return self._trongrid_api_key
@@ -324,7 +324,7 @@ class Config:
         Priority:
         1. Cached value
         2. Direct database.password in YAML (local dev)
-        3. 1Password retrieval (when onepassword.database_item is set)
+        3. 1Password retrieval (when onepassword.database_password_item is set)
 
         Returns:
             Password string, or None if not configured (URL may contain password or no auth)
@@ -339,7 +339,7 @@ class Config:
             return self._database_password
 
         # 2. 1Password
-        item = self.onepassword_database_item
+        item = self.onepassword_database_password_item
         token = self.onepassword_token
         if not item or not token or token in ("your-op-token", "your-service-account-token"):
             return None
@@ -348,7 +348,7 @@ class Config:
         self._database_password = await get_secret_from_1password(
             vault=self.onepassword_vault,
             item=item,
-            field=self.onepassword_database_field,
+            field=self.onepassword_database_password_field,
             token=token,
         )
         return self._database_password
@@ -357,14 +357,14 @@ class Config:
         """
         Get database connection URL, with password injected from 1Password when configured.
 
-        When onepassword.database_item is set, the password is fetched from 1Password
+        When onepassword.database_password_item is set, the password is fetched from 1Password
         and injected into database.url (URL may be without password, e.g. postgresql+asyncpg://user@host:5432/db).
         """
         raw_url = self._config.get("database", {}).get("url", "")
         if not raw_url:
             raise ValueError("database.url is required")
 
-        item = self.onepassword_database_item
+        item = self.onepassword_database_password_item
         if not item:
             return raw_url
 
