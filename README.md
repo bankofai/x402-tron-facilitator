@@ -4,62 +4,137 @@ X402 TRON Facilitator is a service designed to facilitate the **X402 (HTTP 402 P
 
 ## 🚀 Key Features
 
-- **Multi-Network Support**: Compatible with TRON Mainnet, Nile Testnet, and Shasta Testnet.
+- **Multi-Network Support**: Compatible with TRON Mainnet, Nile Testnet, and 
+Shasta Testnet.
 - **Payment Verification**: Robust verification of payment payloads off-chain.
-- **On-chain Settlement**: Handles the complexity of settling payments directly on the TRON blockchain.
-- **Dynamic Fee Quoting**: Provides real-time fee quotes based on payment requirements.
+- **On-chain Settlement**: Handles the complexity of settling payments directly 
+on the TRON blockchain.
+- **Dynamic Fee Quoting**: Provides real-time fee quotes based on payment 
+requirements.
 - **FastAPI Powered**: High-performance, production-ready REST API.
+- **API Key Authentication**: X-API-KEY header support with tiered rate limiting
+- **1Password Integration**: Store private key, database password, and other secrets in 1Password
 
-## 📋 Prerequisites
+## Prerequisites
 
-- Python 3.10 or higher
-- A TRON account with a private key (for signing and settling transactions)
-- Node/RPC access for TRON networks (handled via `x402-tron` package)
+- Python 3.10+
+- PostgreSQL database
+- TRON wallet private key (for settlement signing)
+- 1Password or local config (private key, database password, etc.)
 
-## 🛠️ Installation
+## Configuration
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/open-aibank/x402-tron-facilitator.git
-   cd x402-tron-facilitator
-   ```
+Config file: `config/facilitator.config.yaml`. See `config/facilitator.config.example.yaml` for reference.
 
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Required
 
-3. **Configure Environment Variables**:
-   Copy the example environment file and fill in your details:
-   ```bash
-   cp .env.example .env
-   ```
-   Edit `.env`:
-   - `PRIVATE_KEY`: Your TRON private key (used for settlement).
-   - `FEE_TO_ADDRESS`: The TRON address that will receive the fees.
-   - `BASE_FEE`: The base fee amount (Sun for TRX, or scaled for tokens).
-   - `TRON_GRID_API_KEY`: TronGrid API key for TRON RPC access (required for reliable on-chain reads/writes, especially on `tron:mainnet`).
+```yaml
+database:
+  url: ""
+  password: "your_password"   # Local dev: set directly; or use database_password_item for 1Password
 
-   Notes:
-   - If you enable `tron:mainnet`, the facilitator relies on TronGrid (or another TRON JSON-RPC endpoint) to build and broadcast transactions.
-   - Without a valid `TRON_GRID_API_KEY`, requests may fail with HTTP `429 Too Many Requests` due to rate limiting.
+facilitator:
+  fee_to_address: "T..."      # Fee recipient address
+  private_key: "hex..."       # Local dev; or configure 1Password
+  networks: [nile, shasta, mainnet]
+```
 
-## 🏃 Running the Facilitator
+### Secrets: 1Password or Local
 
-Start the server using the provided entry point:
+- **Private Key**: `facilitator.private_key` or `onepassword.privatekey_item`
+- **Database Password**: `database.password` or `onepassword.database_password_item`
+- **TronGrid API Key**: `facilitator.trongrid_api_key` or `onepassword.trongrid_api_key_item`
+
+Configure environment variable `OP_SERVICE_ACCOUNT_TOKEN` when using 1Password.
+
+### Database Connection Pool (Optional)
+
+```yaml
+database:
+  ssl_mode: "disable"     # disable | require | verify-ca | verify-full
+  max_open_conns: 25
+  max_idle_conns: 15
+  max_life_time: 600
+```
+
+## Installation & Running
 
 ```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Copy and edit config
+cp config/facilitator.config.example.yaml config/facilitator.config.yaml
+
+# Start
 python src/main.py
 ```
 
-The server will start at `http://0.0.0.0:8001` by default.
+Listens on `http://0.0.0.0:8001` by default.
 
-## 🏗️ Architecture
+## API Endpoints
 
-The facilitator acts as a bridge between the client (which holds the payment proof) and the blockchain. It uses the `x402-tron` library to:
-1.  **Validate** signatures and permits.
-2.  **Verify** that the payment amount and recipient match the expectations.
-3.  **Broadcast** the transaction to the TRON network to move funds.
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/supported` | Supported network/scheme and fee info |
+| POST | `/fee/quote` | Get payment fee quote |
+| POST | `/verify` | Off-chain verification of payment signature |
+| POST | `/settle` | On-chain settlement |
+| GET | `/payments/{payment_id}` | Query settlement record |
+| GET | `/health` | Health check |
+
+## API Key Authentication
+
+Callers must include `X-API-KEY` in request headers, matching a key in the `api_keys` table. Authenticated requests use `rate_limit_authenticated`; anonymous requests use `rate_limit_anonymous`.
+
+### Adding an API Key
+
+The `api_keys` table is created automatically on first startup.
+
+Currently needs to be added to the database manually.
+
+## Docker
+
+```bash
+# Build
+docker build -t x402-facilitator .
+
+# Run (mount config)
+docker run -p 8001:8001 \
+  -e OP_SERVICE_ACCOUNT_TOKEN="" \
+  -v $(pwd)/config/facilitator.config.yaml:/app/config/facilitator.config.yaml:ro \
+  -v $(pwd)/logs:/app/logs \
+  x402-facilitator
+```
+
+Images are published to [Docker Hub](https://hub.docker.com/u/bankofai) as `bankofai/x402-tron-facilitator`. CI builds on push to main/master or `v*` tags.
+
+## Logging
+
+Logs are written to `logs/x402-facilitator.{date}_{time}.log`, with a new file per startup. 
+
+## Caller Configuration
+
+Servers calling the facilitator (e.g. x402-tron-demo server) must configure:
+
+- `FACILITATOR_URL`: Facilitator URL, **use https** 
+- `FACILITATOR_API_KEY`: Key that exists in the facilitator's `api_keys` table
+
+## Project Structure
+
+```
+x402-tron-facilitator/
+├── config/           # Config examples
+├── scripts/          # add_api_key and other scripts
+├── src/              # Source code
+│   ├── main.py       # Entry point
+│   ├── config.py     # Config loading
+│   ├── database.py   # Database
+│   ├── auth.py       # API Key & rate limiting
+│   └── ...
+├── Dockerfile
+└── requirements.txt
+```
 
 ---
 

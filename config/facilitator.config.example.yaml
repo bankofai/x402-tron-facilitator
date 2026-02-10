@@ -35,7 +35,7 @@ rate_limit:
   anonymous: "1/minute"
 
 monitoring:
-  port: 6001
+  port: 9001
   endpoint: "/metrics"
 
 facilitator:
