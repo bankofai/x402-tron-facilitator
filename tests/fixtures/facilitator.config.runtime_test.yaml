@@ -1,0 +1,51 @@
+# Dedicated YAML for runtime config read test. All values are asserted in test_config_runtime.py.
+
+database:
+  url: "postgresql+asyncpg://user:secret@localhost:5432/testdb"
+  ssl_mode: "require"
+  max_open_conns: 30
+  max_idle_conns: 10
+  max_life_time: 300
+
+onepassword:
+  vault: "test-vault"
+  privatekey_item: "test-privatekey-item"
+  privatekey_field: "hex_key"
+  database_password_item: "db-pwd-item"
+  database_password_field: "password"
+  trongrid_api_key_item: "trongrid-item"
+  trongrid_api_key_field: "api_key"
+
+server:
+  host: "127.0.0.1"
+  port: 9000
+  workers: 2
+
+logging:
+  dir: "test_logs"
+  filename: "runtime_test.log"
+  level: "DEBUG"
+
+rate_limit:
+  api_key_refresh_interval: 120
+  authenticated: "500/minute"
+  anonymous: "5/minute"
+
+monitoring:
+  port: 9002
+  endpoint: "/prometheus"
+
+facilitator:
+  trongrid_api_key: "test-trongrid-key-from-yaml"
+  networks:
+    tron:nile:
+      fee_to_address: "TNileFeeTo123456789012345678901234"
+      base_fee:
+        USDT: 200
+        USDD: 200000000000000
+      private_key: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+    tron:mainnet:
+      fee_to_address: "TMainnetFeeTo12345678901234567890"
+      base_fee:
+        USDT: 150
+      private_key: "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4"

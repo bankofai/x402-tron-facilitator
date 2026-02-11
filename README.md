@@ -34,16 +34,23 @@ database:
   password: "your_password"   # Local dev: set directly; or use database_password_item for 1Password
 
 facilitator:
-  fee_to_address: "T..."      # Fee recipient address
-  private_key: "hex..."       # Local dev; or configure 1Password
-  networks: [nile, shasta, mainnet]
+  trongrid_api_key: ""        # Shared across networks (optional; or 1Password)
+  networks:                   # Per-network config; listed = enabled
+    tron:nile:
+      fee_to_address: "T..."
+      base_fee: { USDT: 100 }
+      private_key: "hex..."   # Or use onepassword.privatekey_item as fallback
+    tron:mainnet:
+      fee_to_address: "T..."
+      base_fee: { USDT: 100 }
+      private_key: ""
 ```
 
 ### Secrets: 1Password or Local
 
-- **Private Key**: `facilitator.private_key` or `onepassword.privatekey_item`
+- **Private Key**: `facilitator.networks.<network_id>.private_key` per network, or `onepassword.privatekey_item` as fallback
 - **Database Password**: `database.password` or `onepassword.database_password_item`
-- **TronGrid API Key**: `facilitator.trongrid_api_key` or `onepassword.trongrid_api_key_item`
+- **TronGrid API Key**: `facilitator.trongrid_api_key` (shared) or `onepassword.trongrid_api_key_item`
 
 Configure environment variable `OP_SERVICE_ACCOUNT_TOKEN` when using 1Password.
 

@@ -41,16 +41,30 @@ monitoring:
   endpoint: "/metrics"
 
 facilitator:
-  fee_to_address: ""
-  # Base fee per token (symbol -> amount in smallest units)
-  base_fee:
-    USDT: 100              # 0.0001 USDT (6 decimals)
-    USDD: 100000000000000  # 0.0001 USDD (18 decimals)
-  # --- Local Development Fallbacks ---
-  # If provided, these values will be used to bypass 1Password retrieval
-  private_key: ""
+  # Shared across all networks (same level as networks)
   trongrid_api_key: ""
-  
+
+  # Per-network config. Key = network id; listed = enabled. Each has fee_to_address, base_fee, private_key.
   networks:
-    - nile
-    - mainnet
+    tron:nile:
+      fee_to_address: ""
+      base_fee:
+        USDT: 100              # 0.0001 USDT (6 decimals)
+        USDD: 100000000000000  # 0.0001 USDD (18 decimals)
+      private_key: ""          # or use 1Password (onepassword.privatekey_item) as fallback
+    tron:mainnet:
+      fee_to_address: ""
+      base_fee:
+        USDT: 100
+        USDD: 100000000000000
+      private_key: ""
+    bsc:testnet:
+      fee_to_address: ""
+      base_fee:
+        DHLU: 100
+      private_key: ""
+    bsc:mainnet:
+      fee_to_address: ""
+      base_fee:
+        EPS: 100
+      private_key: ""

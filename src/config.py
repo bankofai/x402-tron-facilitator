@@ -74,25 +74,25 @@ class Config:
         if not db.get("url"):
             errors.append("database.url is required and must be non-empty")
         fac = self._config.get("facilitator", {})
-        if not fac.get("fee_to_address"):
-            errors.append("facilitator.fee_to_address is required and must be non-empty")
-        if not fac.get("networks") or not isinstance(fac["networks"], list):
-            errors.append("facilitator.networks is required and must be a non-empty list")
-        # If no direct private_key, we check for 1Password token
-        if not fac.get("private_key"):
-            token = self.onepassword_token
-            if not token or token == "your-op-token" or token == "your-service-account-token":
-                # No 1Password and no direct key -> Error
-                errors.append(
-                    "Facilitator Key is missing. Provide 'facilitator.private_key' for local dev "
-                    "or 'onepassword.token' for production."
-                )
-            else:
-                # Using 1Password, ensure metadata is present
-                if not self._config.get("onepassword", {}).get("vault"):
-                    errors.append("onepassword.vault is required when using 1Password")
-                if not self._config.get("onepassword", {}).get("privatekey_item"):
-                    errors.append("onepassword.privatekey_item is required when using 1Password")
+        networks_cfg = fac.get("networks")
+        if not networks_cfg or not isinstance(networks_cfg, dict):
+            errors.append("facilitator.networks is required and must be a non-empty dict (network_id -> config)")
+        else:
+            has_op = bool(
+                self.onepassword_token
+                and self.onepassword_token not in ("your-op-token", "your-service-account-token")
+                and self._config.get("onepassword", {}).get("vault")
+                and self._config.get("onepassword", {}).get("privatekey_item")
+            )
+            for nid, nc in networks_cfg.items():
+                nc = nc or {}
+                if not nc.get("fee_to_address"):
+                    errors.append(f"facilitator.networks.{nid}.fee_to_address is required")
+                if not nc.get("private_key") and not has_op:
+                    errors.append(
+                        f"facilitator.networks.{nid}.private_key is required, "
+                        "or configure onepassword.vault and onepassword.privatekey_item"
+                    )
         if errors:
             raise ValueError(
                 "Configuration validation failed. " + " ".join(errors)
@@ -171,34 +171,33 @@ class Config:
             return env_token
         return self._config.get("onepassword", {}).get("token")
     
-    @property
-    def fee_to_address(self) -> str:
-        """Get fee recipient address"""
-        return self._config.get("facilitator", {}).get("fee_to_address", "")
-    
-    @property
-    def base_fee(self) -> dict[str, int]:
-        """
-        Get base fee per token (symbol -> amount in smallest units).
+    def _network_config(self, network_id: str) -> dict:
+        """Get raw config dict for a network (facilitator.networks[network_id])."""
+        return self._config.get("facilitator", {}).get("networks", {}).get(network_id) or {}
 
-        YAML format:
-          base_fee:
-            USDT: 100          # 0.0001 USDT (6 decimals)
-            USDD: 100000000000000  # 0.0001 USDD (18 decimals)
+    def get_fee_to_address(self, network_id: str) -> str:
+        """Get fee recipient address for a network."""
+        return self._network_config(network_id).get("fee_to_address", "")
 
-        Legacy: single string/number is treated as USDT fee for backward compat.
+    def get_base_fee(self, network_id: str) -> dict[str, int]:
         """
-        val = self._config.get("facilitator", {}).get("base_fee", {})
+        Get base fee per token for a network (symbol -> amount in smallest units).
+        YAML: networks.<id>.base_fee: { USDT: 100, USDD: ... }
+        """
+        val = self._network_config(network_id).get("base_fee", {})
         if isinstance(val, dict):
             return {k: int(v) for k, v in val.items()}
         if isinstance(val, (str, int)):
             return {"USDT": int(val)}
         return {}
-    
+
     @property
     def networks(self) -> list[str]:
-        """Get supported networks"""
-        return self._config.get("facilitator", {}).get("networks", [])
+        """Get list of network ids (all keys in facilitator.networks; listed = enabled)."""
+        nets = self._config.get("facilitator", {}).get("networks", {})
+        if not isinstance(nets, dict):
+            return []
+        return list(nets.keys())
     
     @property
     def server_host(self) -> str:
@@ -245,39 +244,34 @@ class Config:
         """Get monitoring endpoint path"""
         return self._config.get("monitoring", {}).get("endpoint", "/metrics")
 
-    async def get_private_key(self) -> str:
+    async def get_private_key(self, network_id: str) -> str:
         """
-        Get private key. 
+        Get private key for a network.
         Priority:
-        1. Cached value
-        2. Direct 'private_key' in YAML (for local dev)
-        3. 1Password retrieval
-        
+        1. Cached value for this network (from 1Password)
+        2. This network's private_key in YAML (facilitator.networks.<id>.private_key)
+        3. 1Password retrieval (cached as fallback for all networks missing a key)
+
         Returns:
             Private key string
         """
+        nc = self._network_config(network_id)
+        direct_key = (nc.get("private_key") or "").strip()
+        if direct_key:
+            return direct_key
+
+        # Fallback: single 1Password key (cached in _private_key)
         if self._private_key is not None:
             return self._private_key
-            
-        # 1. Try direct key from YAML first (fallback for local dev)
-        direct_key = self._config.get("facilitator", {}).get("private_key")
-        if direct_key:
-            self._private_key = direct_key
-            return self._private_key
-        
-        # 2. Prevent using placeholder 1Password token
-        token = self.onepassword_token
-        if not token or token == "your-op-token":
-            raise ValueError(
-                "Facilitator Private Key is not configured.\n\n"
-                "Please choose one of the following methods in 'facilitator.config.yaml':\n"
-                "  A) Local Dev: Uncomment 'private_key' under the 'facilitator' section and fill it.\n"
-                "  B) Production: Fill in a valid 1Password Service Account Token under 'onepassword.token'.\n"
-            )
 
-        # 3. Fallback to 1Password
+        token = self.onepassword_token
+        if not token or token == "your-op-token" or token == "your-service-account-token":
+            raise ValueError(
+                f"Facilitator Private Key for {network_id} is not configured.\n\n"
+                "Set facilitator.networks.<network_id>.private_key in config, "
+                "or configure onepassword.vault and onepassword.privatekey_item."
+            )
         from onepassword_client import get_secret_from_1password
-        
         self._private_key = await get_secret_from_1password(
             vault=self.onepassword_vault,
             item=self.onepassword_item,

@@ -164,10 +164,14 @@ def _minimal_config(db_url: str) -> dict:
     return {
         "database": {"url": db_url},
         "facilitator": {
-            "fee_to_address": "TXxx0000000000000000000000000000000",
-            "base_fee": "0",
-            "networks": ["mainnet"],
-            "private_key": "0" * 64,
+            "trongrid_api_key": "",
+            "networks": {
+                "tron:mainnet": {
+                    "fee_to_address": "TXxx0000000000000000000000000000000",
+                    "base_fee": {"USDT": 0},
+                    "private_key": "0" * 64,
+                },
+            },
         },
         "logging": {},
     }
