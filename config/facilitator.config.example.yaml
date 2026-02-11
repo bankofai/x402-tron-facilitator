@@ -11,14 +11,14 @@ database:
   # max_idle_conns: 15           # connections to keep open when idle (pool_size)
   # max_life_time: 600           # seconds before recycling a connection (pool_recycle)
 
+# 1Password: each value is "vault/item/field" (op:// style). Set OP_SERVICE_ACCOUNT_TOKEN when using.
 onepassword:
-  vault: ""
-  privatekey_item: ""
-  privatekey_field: ""
-  database_password_item: ""
-  database_password_field: ""
-  trongrid_api_key_item: ""
-  trongrid_api_key_field: ""
+  tron_nile_private_key: ""
+  tron_mainnet_private_key: ""
+  bsc_testnet_private_key: ""
+  bsc_mainnet_private_key: ""
+  database_password: ""
+  trongrid_api_key: ""
 
 server:
   host: "0.0.0.0"
@@ -51,7 +51,7 @@ facilitator:
       base_fee:
         USDT: 100              # 0.0001 USDT (6 decimals)
         USDD: 100000000000000  # 0.0001 USDD (18 decimals)
-      private_key: ""          # or use 1Password (onepassword.privatekey_item) as fallback
+      private_key: ""          # or use 1Password: onepassword.<network> = "vault/item/field"
     tron:mainnet:
       fee_to_address: ""
       base_fee:

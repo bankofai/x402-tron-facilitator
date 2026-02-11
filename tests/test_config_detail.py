@@ -231,8 +231,7 @@ def test_validate_required_passes_when_network_no_private_key_but_has_op():
         },
         "onepassword": {
             "token": "real-op-token",
-            "vault": "V",
-            "privatekey_item": "Item",
+            "tron_nile_private_key": "V/Item/private_key",
         },
     }
     config._validate_required()  # no raise
@@ -249,8 +248,7 @@ def test_validate_required_raises_when_op_token_placeholder():
         },
         "onepassword": {
             "token": "your-op-token",
-            "vault": "V",
-            "privatekey_item": "Item",
+            "tron_nile_private_key": "V/Item/private_key",
         },
     }
     with pytest.raises(ValueError) as exc_info:
@@ -283,7 +281,7 @@ async def test_get_private_key_returns_cached_fallback_after_first_op_fetch():
                 "tron:mainnet": {"fee_to_address": "T...", "private_key": ""},
             }
         },
-        "onepassword": {"token": "t", "vault": "V", "privatekey_item": "I"},
+        "onepassword": {"token": "t", "tron_mainnet_private_key": "V/I/private_key"},
     }
     with patch("onepassword_client.get_secret_from_1password", new_callable=AsyncMock, return_value="op-fetched-key"):
         key_mainnet = await config.get_private_key("tron:mainnet")
@@ -319,7 +317,7 @@ async def test_get_private_key_raises_when_token_is_placeholder():
                 "tron:nile": {"fee_to_address": "T...", "private_key": ""},
             }
         },
-        "onepassword": {"token": "your-op-token", "vault": "V", "privatekey_item": "I"},
+        "onepassword": {"token": "your-op-token", "tron_nile_private_key": "V/I/private_key"},
     }
     with pytest.raises(ValueError) as exc_info:
         await config.get_private_key("tron:nile")
@@ -329,7 +327,7 @@ async def test_get_private_key_raises_when_token_is_placeholder():
 @pytest.mark.asyncio
 async def test_get_private_key_per_network_takes_precedence_over_cached_op():
     config = Config()
-    config._private_key = "cached-op-key"
+    config._private_key_cache["tron:nile"] = "cached-op-key"
     config._config = {
         "facilitator": {
             "networks": {
